@@ -4,6 +4,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.dudurpp.Payroll.exceptions.EmployeeNotFoundException;
 import com.dudurpp.Payroll.models.Employee;
+import com.dudurpp.Payroll.models.EmployeeModelAssembler;
 import com.dudurpp.Payroll.repositories.EmployeeRepository;
 
 import java.util.List;
@@ -25,17 +26,17 @@ public class EmployeeController {
 
     private final EmployeeRepository employeeRepository;
 
-    EmployeeController(EmployeeRepository employeeRepository){
+    private final EmployeeModelAssembler assembler;
+
+    EmployeeController(EmployeeRepository employeeRepository, EmployeeModelAssembler assembler){
         this.employeeRepository = employeeRepository;
+        this.assembler = assembler;
     }
 
     @GetMapping("/employees")
-    CollectionModel<EntityModel<Employee>> getAll() {
+    public CollectionModel<EntityModel<Employee>> getAll() {
         List<EntityModel<Employee>> employees = employeeRepository.findAll().stream()
-            .map(employee -> EntityModel.of(employee,
-                linkTo(methodOn(EmployeeController.class).getOne(employee.getId())).withSelfRel(),
-                linkTo(methodOn(EmployeeController.class).getAll()).withRel("employees")
-            ))
+            .map(assembler::toModel)
             .collect(Collectors.toList());
 
         return CollectionModel.of(employees, linkTo(methodOn(EmployeeController.class).getAll()).withSelfRel());        
@@ -47,7 +48,7 @@ public class EmployeeController {
     }
 
     @GetMapping("/employees/{id}")
-    EntityModel<Employee> getOne(@PathVariable Long id) {
+    public EntityModel<Employee> getOne(@PathVariable Long id) {
         Employee employee = employeeRepository.findById(id)
             .orElseThrow(() -> new EmployeeNotFoundException(id));
 
