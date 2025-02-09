@@ -12,8 +12,7 @@ public class Order {
     private @Id @GeneratedValue Long Id;
     private String description;
     private Status status;
-    public Order(Long id, String description, Status status) {
-        Id = id;
+    public Order(String description, Status status) {
         this.description = description;
         this.status = status;
     }
