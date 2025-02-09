@@ -7,7 +7,10 @@ import com.dudurpp.Payroll.models.Employee;
 import com.dudurpp.Payroll.repositories.EmployeeRepository;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 @RestController
 public class EmployeeController {
@@ -26,18 +30,33 @@ public class EmployeeController {
     }
 
     @GetMapping("/employees")
-    List<Employee> getAll() {
-        return employeeRepository.findAll();
+    CollectionModel<EntityModel<Employee>> getAll() {
+        List<EntityModel<Employee>> employees = employeeRepository.findAll().stream()
+            .map(employee -> EntityModel.of(employee,
+                linkTo(methodOn(EmployeeController.class).getOne(employee.getId())).withSelfRel(),
+                linkTo(methodOn(EmployeeController.class).getAll()).withRel("employees")
+            ))
+            .collect(Collectors.toList());
+
+        return CollectionModel.of(employees, linkTo(methodOn(EmployeeController.class).getAll()).withSelfRel());        
     }
+
     @PostMapping("/employees")
     Employee postNewEmployee(@RequestBody Employee employee) {
         return employeeRepository.save(employee);
     }
+
     @GetMapping("/employees/{id}")
-    Employee getOne(@PathVariable Long id) {
-        return employeeRepository.findById(id)
-        .orElseThrow(() -> new EmployeeNotFoundException(id));
+    EntityModel<Employee> getOne(@PathVariable Long id) {
+        Employee employee = employeeRepository.findById(id)
+            .orElseThrow(() -> new EmployeeNotFoundException(id));
+
+        return EntityModel.of(employee,
+            linkTo(methodOn(EmployeeController.class).getOne(id)).withSelfRel(),
+            linkTo(methodOn(EmployeeController.class).getAll()).withRel("employees")
+        );
     }
+
     @PutMapping("employees/{id}")
     Employee replaceEmployee(@PathVariable Long id, @RequestBody Employee newEmployee) {
         return employeeRepository.findById(id)
@@ -49,6 +68,7 @@ public class EmployeeController {
                 return employeeRepository.save(newEmployee);
             });
     }
+
     @DeleteMapping("employees/{id}")
     void deleteEmployee(@PathVariable Long id){
         employeeRepository.deleteById(id);
